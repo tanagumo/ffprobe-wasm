@@ -79,9 +79,9 @@ typedef struct FileInfoResponse {
   std::vector<Chapter> chapters;
 } FileInfoResponse;
 
-typedef struct FramesResponse {
-  std::vector<double> key_frame_timings;
-} FramesResponse;
+typedef struct KeyFramesResponse {
+  std::vector<double> start_secs;
+} KeyFramesResponse;
 
 FileInfoResponse get_file_info(std::string filename) {
     av_log_set_level(AV_LOG_QUIET); // No logging output for libav.
@@ -196,7 +196,7 @@ FileInfoResponse get_file_info(std::string filename) {
     return r;
 }
 
-FramesResponse get_key_frame_timings(std::string filename) {
+KeyFramesResponse get_key_frames(std::string filename) {
     av_log_set_level(AV_LOG_QUIET); // No logging output for libav.
 
     FILE *file = fopen(filename.c_str(), "rb");
@@ -254,7 +254,7 @@ FramesResponse get_key_frame_timings(std::string filename) {
     // printf("stream_time_base: %d / %d = %.5f\n", stream_time_base.num, stream_time_base.den, av_q2d(stream_time_base));
 
     const double timeBase = av_q2d(stream_time_base);
-    FramesResponse r;
+    KeyFramesResponse r;
 
     AVCodecContext *pCodecContext = avcodec_alloc_context3(pCodec);
     avcodec_parameters_to_context(pCodecContext, pCodecParameters);
@@ -281,7 +281,7 @@ FramesResponse get_key_frame_timings(std::string filename) {
 
             // Track keyframes so we paginate by each GOP.
             if (pFrame->key_frame == 1) {
-                r.key_frame_timings.push_back((int) pPacket->pts * timeBase);
+                r.start_secs.push_back((int) pPacket->pts * timeBase);
             }
 
             if (--max_packets_to_process <= 0) break;
@@ -361,8 +361,8 @@ EMSCRIPTEN_BINDINGS(structs) {
   ;
   function("get_file_info", &get_file_info);
 
-  emscripten::value_object<FramesResponse>("FramesResponse")
-  .field("key_frame_timings", &FramesResponse::key_frame_timings)
+  emscripten::value_object<KeyFramesResponse>("KeyFramesResponse")
+  .field("start_secs", &KeyFramesResponse::start_secs)
   ;
-  function("get_key_frame_timings", &get_key_frame_timings);
+  function("get_key_frames", &get_key_frames);
 }
