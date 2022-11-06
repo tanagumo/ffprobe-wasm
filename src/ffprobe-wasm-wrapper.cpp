@@ -196,7 +196,7 @@ FileInfoResponse get_file_info(std::string filename) {
     return r;
 }
 
-FramesResponse get_key_frame_timings(std::string filename, int timestamp) {
+FramesResponse get_key_frame_timings(std::string filename) {
     av_log_set_level(AV_LOG_QUIET); // No logging output for libav.
 
     FILE *file = fopen(filename.c_str(), "rb");
@@ -264,11 +264,8 @@ FramesResponse get_key_frame_timings(std::string filename, int timestamp) {
     AVFrame *pFrame = av_frame_alloc();
 
     int max_packets_to_process = 1000;
-    int frame_count = 0;
-    int key_frames = 0;
 
-    // Seek to frame from the given timestamp.
-    av_seek_frame(pFormatContext, video_stream_index, timestamp, AVSEEK_FLAG_ANY);
+    av_seek_frame(pFormatContext, video_stream_index, 0, AVSEEK_FLAG_ANY);
 
     // Read video frames.
     while (av_read_frame(pFormatContext, pPacket) >= 0) {
@@ -283,20 +280,15 @@ FramesResponse get_key_frame_timings(std::string filename, int timestamp) {
             }
 
             // Track keyframes so we paginate by each GOP.
-            if (pFrame->key_frame == 1) key_frames++;
-
-            // Break at the next keyframe found.
-            if (key_frames > 1) break;
-
-            r.key_frame_timings.push_back((int) pPacket->pts * timeBase);
+            if (pFrame->key_frame == 1) {
+                r.key_frame_timings.push_back((int) pPacket->pts * timeBase);
+            }
 
             if (--max_packets_to_process <= 0) break;
           }
-        frame_count++;
       }
       av_packet_unref(pPacket);
     }
-    r.gop_size = frame_count;
 
     avformat_close_input(&pFormatContext);
     av_packet_free(&pPacket);
