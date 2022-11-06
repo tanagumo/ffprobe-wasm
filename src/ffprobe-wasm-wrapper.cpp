@@ -143,5 +143,6 @@ EMSCRIPTEN_BINDINGS(structs) {
   emscripten::value_object<KeyFramesResponse>("KeyFramesResponse")
   .field("start_secs", &KeyFramesResponse::start_secs)
   ;
+  register_vector<double>("vector<double>");
   function("get_key_frames", &get_key_frames);
 }
