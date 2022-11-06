@@ -58,15 +58,6 @@ typedef struct Chapter {
   std::vector<Tag> tags;
 } Chapter;
 
-typedef struct Frame {
-  int frame_number;
-  char pict_type;
-  int pts;
-  int dts;
-  int pos;
-  int pkt_size;
-} Frame;
-
 typedef struct FileInfoResponse {
   std::string name;
   float bit_rate;
@@ -338,15 +329,6 @@ EMSCRIPTEN_BINDINGS(structs) {
   .field("tags", &Chapter::tags)
   ;
   register_vector<Chapter>("Chapter");
-
-  emscripten::value_object<Frame>("Frame")
-  .field("frame_number", &Frame::frame_number)
-  .field("pict_type", &Frame::pict_type)
-  .field("pts", &Frame::pts)
-  .field("dts", &Frame::dts)
-  .field("pos", &Frame::pos)
-  .field("pkt_size", &Frame::pkt_size);
-  register_vector<Frame>("Frame");
 
   emscripten::value_object<FileInfoResponse>("FileInfoResponse")
   .field("name", &FileInfoResponse::name)
