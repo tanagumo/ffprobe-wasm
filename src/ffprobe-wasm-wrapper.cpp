@@ -80,12 +80,7 @@ typedef struct FileInfoResponse {
 } FileInfoResponse;
 
 typedef struct FramesResponse {
-  std::vector<Frame> frames;
-  int nb_frames;
-  int gop_size;
-  float duration;
-  double time_base;
-  double avg_frame_rate;
+  std::vector<double> key_frame_timings;
 } FramesResponse;
 
 FileInfoResponse get_file_info(std::string filename) {
@@ -201,7 +196,7 @@ FileInfoResponse get_file_info(std::string filename) {
     return r;
 }
 
-FramesResponse get_frames(std::string filename, int timestamp) {
+FramesResponse get_key_frame_timings(std::string filename, int timestamp) {
     av_log_set_level(AV_LOG_QUIET); // No logging output for libav.
 
     FILE *file = fopen(filename.c_str(), "rb");
@@ -258,16 +253,8 @@ FramesResponse get_frames(std::string filename, int timestamp) {
     AVRational avg_frame_rate = pFormatContext->streams[video_stream_index]->avg_frame_rate;
     // printf("stream_time_base: %d / %d = %.5f\n", stream_time_base.num, stream_time_base.den, av_q2d(stream_time_base));
 
+    const double timeBase = av_q2d(stream_time_base);
     FramesResponse r;
-    r.nb_frames = nb_frames;
-    r.time_base = av_q2d(stream_time_base);
-    r.avg_frame_rate = av_q2d(avg_frame_rate);
-    r.duration = pFormatContext->streams[video_stream_index]->duration;
-
-    // If the duration value isn't in the stream, get from the FormatContext.
-    if (r.duration == 0) {
-      r.duration = pFormatContext->duration * r.time_base;
-    }
 
     AVCodecContext *pCodecContext = avcodec_alloc_context3(pCodec);
     avcodec_parameters_to_context(pCodecContext, pCodecParameters);
@@ -301,15 +288,7 @@ FramesResponse get_frames(std::string filename, int timestamp) {
             // Break at the next keyframe found.
             if (key_frames > 1) break;
 
-            Frame f = {
-              .frame_number = frame_count,
-              .pict_type = (char) av_get_picture_type_char(pFrame->pict_type),
-              .pts = (int) pPacket->pts,
-              .dts = (int) pPacket->dts,
-              .pos = (int) pPacket->pos,
-              .pkt_size = pFrame->pkt_size,
-            };
-            r.frames.push_back(f);
+            r.key_frame_timings.push_back((int) pPacket->pts * timeBase);
 
             if (--max_packets_to_process <= 0) break;
           }
@@ -391,12 +370,7 @@ EMSCRIPTEN_BINDINGS(structs) {
   function("get_file_info", &get_file_info);
 
   emscripten::value_object<FramesResponse>("FramesResponse")
-  .field("frames", &FramesResponse::frames)
-  .field("nb_frames", &FramesResponse::nb_frames)
-  .field("gop_size", &FramesResponse::gop_size)
-  .field("duration", &FramesResponse::duration)
-  .field("time_base", &FramesResponse::time_base)
-  .field("avg_frame_rate", &FramesResponse::avg_frame_rate)
+  .field("key_frame_timings", &FramesResponse::key_frame_timings)
   ;
-  function("get_frames", &get_frames);
+  function("get_key_frame_timings", &get_key_frame_timings);
 }
